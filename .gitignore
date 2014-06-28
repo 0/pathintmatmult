@@ -1,0 +1,6 @@
+/build/
+/dist/
+
+/pathintmatmult.egg-info/
+
+__pycache__/
