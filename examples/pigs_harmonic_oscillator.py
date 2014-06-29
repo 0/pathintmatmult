@@ -48,7 +48,9 @@ harmonic = harmonic_potential(m=mass, w=omega)
 ho_pigs = PIGSMM(mass, grid_range, grid_len, beta, num_links, harmonic)
 
 estimated_potential_energy = ho_pigs.expectation_value(harmonic) / KB # K
+estimated_total_energy = ho_pigs.energy_mixed / KB # K
 
 print('V = {} K'.format(estimated_potential_energy))
 # According to the virial theorem, <K> = <V> for a harmonic oscillator.
 print('E_virial = {} K'.format(2 * estimated_potential_energy))
+print('E_mixed = {} K'.format(estimated_total_energy))

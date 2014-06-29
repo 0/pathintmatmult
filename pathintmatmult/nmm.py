@@ -145,15 +145,32 @@ class PIGSMM:
 
 	@property
 	@cached
+	def rho_beta_half(self) -> '[[1/nm]]':
+		"""
+		Matrix for the half path propagator.
+		"""
+
+		result = N.linalg.matrix_power(self.grid_spacing * self.rho_tau, self.num_links // 2)
+
+		return result / self.grid_spacing
+
+	@property
+	@cached
+	def rho_beta(self) -> '[[1/nm]]':
+		"""
+		Matrix for the full path propagator.
+		"""
+
+		return self.grid_spacing * N.dot(self.rho_beta_half, self.rho_beta_half)
+
+	@property
+	@cached
 	def ground_wf(self) -> '[1/nm^1/2]':
 		"""
 		Normalized ground state wavefunction.
 		"""
 
-		num_links_half = self.num_links // 2
-		rho_beta_half = N.linalg.matrix_power(self.grid_spacing * self.rho_tau, num_links_half)
-
-		ground_wf = N.dot(rho_beta_half, self.trial_f_grid)
+		ground_wf = N.dot(self.rho_beta_half, self.trial_f_grid)
 		# Explicitly normalize.
 		ground_wf /= N.sqrt(N.sum(ground_wf ** 2))
 
@@ -167,6 +184,22 @@ class PIGSMM:
 		"""
 
 		return self.ground_wf ** 2
+
+	@property
+	@cached
+	def energy_mixed(self) -> 'kJ/mol':
+		"""
+		Ground state energy calculated using the mixed estimator.
+
+		Currently only has support for a uniform trial function.
+		"""
+
+		ground_wf_full = N.dot(self.rho_beta, self.trial_f_grid)
+
+		energy = N.sum(ground_wf_full * self.pot_f_grid * self.trial_f_grid)
+		normalization = N.dot(ground_wf_full, self.trial_f_grid)
+
+		return energy / normalization
 
 	def expectation_value(self, property_f: '[nm] -> [X]') -> 'X':
 		"""
