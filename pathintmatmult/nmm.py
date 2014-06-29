@@ -150,7 +150,10 @@ class PIGSMM:
 		Matrix for the half path propagator.
 		"""
 
-		result = N.linalg.matrix_power(self.grid_spacing * self.rho_tau, self.num_links // 2)
+		power = self.num_links // 2
+
+		eigvals, eigvecs = N.linalg.eigh(self.grid_spacing * self.rho_tau)
+		result = N.dot(N.dot(eigvecs, N.diag(eigvals ** power)), eigvecs.T)
 
 		return result / self.grid_spacing
 
