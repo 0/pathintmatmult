@@ -25,6 +25,9 @@ class PIGSMM:
 		  propagation length from the trial function to the middle of the path
 		  is beta/2.
 
+		Note:
+		  If pot_f receives an array as input, it should map over it.
+
 		Parameters:
 		  mass: Mass of the particle.
 		  grid_range: Where the grid is truncated. The grid is symmetric about
@@ -106,6 +109,15 @@ class PIGSMM:
 
 	@property
 	@cached
+	def pot_f_grid(self) -> '[kJ/mol]':
+		"""
+		Potential function evaluated on the grid.
+		"""
+
+		return self.pot_f(self.grid)
+
+	@property
+	@cached
 	def trial_f_grid(self) -> '[1/nm^1/2]':
 		"""
 		Normalized trial function evaluated on the grid.
@@ -126,15 +138,10 @@ class PIGSMM:
 		prefactor_V = self.tau / 2 # mol/kJ
 		prefactor_front = N.sqrt(prefactor_K / N.pi) # 1/nm
 
-		K = N.empty((self.grid_len, self.grid_len)) # nm^2
-		V = N.empty_like(K) # kJ/mol
+		K = N.tile(self.grid, (self.grid_len, 1)) # [[nm]]
+		V = N.tile(self.pot_f_grid, (self.grid_len, 1)) # [[kJ/mol]]
 
-		for i, q_i in enumerate(self.grid):
-			for j, q_j in enumerate(self.grid):
-				K[i, j] = (q_i - q_j) ** 2
-				V[i, j] = self.pot_f(q_i) + self.pot_f(q_j)
-
-		return prefactor_front * N.exp(-prefactor_K * K - prefactor_V * V)
+		return prefactor_front * N.exp(-prefactor_K * (K - K.T) ** 2 - prefactor_V * (V + V.T))
 
 	@property
 	@cached
