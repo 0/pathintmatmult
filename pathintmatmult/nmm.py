@@ -181,6 +181,15 @@ class PIGSMM:
 
 	@property
 	@cached
+	def density(self) -> '[[1/nm]]':
+		"""
+		Normalized ground state density matrix.
+		"""
+
+		return N.outer(self.ground_wf, self.ground_wf)
+
+	@property
+	@cached
 	def density_diagonal(self) -> '[1/nm]':
 		"""
 		Normalized ground state diagonal density.

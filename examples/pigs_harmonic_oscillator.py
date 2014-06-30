@@ -19,6 +19,7 @@ from argparse import ArgumentParser
 
 from pathintmatmult.constants import HBAR, KB, ME
 from pathintmatmult.nmm import PIGSMM
+from pathintmatmult.plotting import plot2d
 from pathintmatmult.potentials import harmonic_potential
 
 
@@ -33,6 +34,8 @@ p_config.add_argument('--grid-len', metavar='L', type=int, required=True, help='
 p_config.add_argument('--beta', metavar='B', type=float, required=True, help='propagation length (1/K)')
 p_config.add_argument('--num-links', metavar='P', type=int, required=True, help='number of links')
 
+p.add_argument('--density-out', metavar='FILE', help='path to output density plot')
+
 args = p.parse_args()
 
 mass = args.mass * ME # g/mol
@@ -41,6 +44,8 @@ grid_range = args.grid_range # nm
 grid_len = args.grid_len # 1
 beta = args.beta / KB # mol/kJ
 num_links = args.num_links # 1
+
+density_out = args.density_out
 
 
 # Calculate values.
@@ -54,3 +59,10 @@ print('V = {} K'.format(estimated_potential_energy))
 # According to the virial theorem, <K> = <V> for a harmonic oscillator.
 print('E_virial = {} K'.format(2 * estimated_potential_energy))
 print('E_mixed = {} K'.format(estimated_total_energy))
+
+
+# Output plot.
+if density_out:
+	xy_range = (-grid_range, grid_range)
+
+	plot2d(ho_pigs.density, xy_range, xy_range, density_out, x_label=r'$q_j / \mathrm{nm}$', y_label=r'$q_i / \mathrm{nm}$')

@@ -7,6 +7,10 @@ install_requires = [
 		'numpy',
 		]
 
+extras_require = {
+		'plot': ['matplotlib'],
+		}
+
 setup(
 	name='pathintmatmult',
 	version='0.1',
@@ -23,5 +27,6 @@ setup(
 		'Programming Language :: Python :: 3',
 	],
 	install_requires=install_requires,
+	extras_require=extras_require,
 	packages=find_packages(),
 )
