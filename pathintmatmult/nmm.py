@@ -105,7 +105,16 @@ class PIGSMM:
 		Distance between adjacent grid points.
 		"""
 
-		return self.grid[1] - self.grid[0]
+		return 2 * self.grid_range / (self.grid_len - 1)
+
+	@property
+	@cached
+	def volume_element(self) -> 'nm':
+		"""
+		Effective volume taken up by each grid point.
+		"""
+
+		return self.grid_spacing
 
 	@property
 	@cached
@@ -152,10 +161,10 @@ class PIGSMM:
 
 		power = self.num_links // 2
 
-		eigvals, eigvecs = N.linalg.eigh(self.grid_spacing * self.rho_tau)
+		eigvals, eigvecs = N.linalg.eigh(self.volume_element * self.rho_tau)
 		result = N.dot(N.dot(eigvecs, N.diag(eigvals ** power)), eigvecs.T)
 
-		return result / self.grid_spacing
+		return result / self.volume_element
 
 	@property
 	@cached
@@ -164,7 +173,7 @@ class PIGSMM:
 		Matrix for the full path propagator.
 		"""
 
-		return self.grid_spacing * N.dot(self.rho_beta_half, self.rho_beta_half)
+		return self.volume_element * N.dot(self.rho_beta_half, self.rho_beta_half)
 
 	@property
 	@cached
@@ -219,3 +228,108 @@ class PIGSMM:
 		"""
 
 		return N.dot(self.density_diagonal, property_f(self.grid))
+
+
+class PIGSMM2(PIGSMM):
+	"""
+	PIGSMM for two identical particles.
+	"""
+
+	# pot_f(self) -> '[nm] -> kJ/mol'
+
+	@property
+	@cached
+	def grid(self) -> '[[nm]]':
+		"""
+		Vector of the positions corresponding to the grid points.
+
+		Actually a 2xN array, with each row containing coordinates of both
+		particles.
+		"""
+
+		single = N.linspace(-self.grid_range, self.grid_range, self.grid_len) # [nm]
+		double = N.array([[a, b] for a in single for b in single]) # [[nm]]
+
+		return double
+
+	@property
+	@cached
+	def volume_element(self) -> 'nm^2':
+		"""
+		Effective volume taken up by each grid point.
+		"""
+
+		return self.grid_spacing ** 2
+
+	@property
+	@cached
+	def trial_f_grid(self) -> '[1/nm]':
+		"""
+		Normalized trial function evaluated on the grid.
+
+		Currently only has support for a uniform trial function.
+		"""
+
+		num_points = self.grid_len ** 2
+
+		return N.ones(num_points) / N.sqrt(num_points)
+
+	@property
+	@cached
+	def rho_tau(self) -> '[[1/nm^2]]':
+		"""
+		Matrix for the high-temperature propagator.
+		"""
+
+		prefactor_K = self.mass / (2 * HBAR * HBAR * self.tau) # 1/nm^2
+		prefactor_V = self.tau / 2 # mol/kJ
+		prefactor_front = prefactor_K / N.pi # 1/nm^2
+
+		K = N.empty((self.grid_len ** 2, self.grid_len ** 2)) # nm^2
+		V = N.empty_like(K) # kJ/mol
+
+		for i, q_i in enumerate(self.grid):
+			for j, q_j in enumerate(self.grid):
+				K[i, j] = N.sum((q_i - q_j) ** 2)
+				V[i, j] = self.pot_f(q_i) + self.pot_f(q_j)
+
+		return prefactor_front * N.exp(-prefactor_K * K - prefactor_V * V)
+
+	# rho_beta_half(self) -> '[[1/nm^2]]'
+
+	# rho_beta(self) -> '[[1/nm^2]]'
+
+	# ground_wf(self) -> '[1/nm]'
+
+	# density(self) -> '[[1/nm^2]]'
+
+	# density_diagonal(self) -> '[1/nm^2]'
+
+	# expectation_value(self, property_f: '[[nm]] -> [X]') -> 'X'
+
+	@property
+	@cached
+	def density_reduced(self) -> '[[1/nm]]':
+		"""
+		Density matrix for one particle, with the other traced out.
+		"""
+
+		density_new = N.zeros((self.grid_len, self.grid_len))
+
+		for i in range(self.grid_len):
+			for j in range(self.grid_len):
+				for t in range(self.grid_len):
+					density_new[i, j] += self.density[self.grid_len * i + t, self.grid_len * j + t]
+
+		return density_new
+
+	@property
+	@cached
+	def trace_renyi2(self) -> '1':
+		"""
+		Trace of the square of the reduced density matrix.
+
+		The 2nd Rényi entropy is the negative logarithm of this quantity.
+		"""
+
+		return N.linalg.matrix_power(self.density_reduced, 2).trace()
