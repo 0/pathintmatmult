@@ -8,8 +8,8 @@ A pair of identical harmonic oscillators with a harmonic interaction potential.
 
 from argparse import ArgumentParser
 
+from pathintmatmult import PIGSMM2
 from pathintmatmult.constants import HBAR, KB, ME
-from pathintmatmult.nmm import PIGSMM2
 from pathintmatmult.potentials import harmonic_potential
 
 

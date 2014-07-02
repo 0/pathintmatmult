@@ -17,8 +17,8 @@ to try:
 
 from argparse import ArgumentParser
 
+from pathintmatmult import PIGSMM
 from pathintmatmult.constants import HBAR, KB, ME
-from pathintmatmult.nmm import PIGSMM
 from pathintmatmult.plotting import plot2d
 from pathintmatmult.potentials import harmonic_potential
 
