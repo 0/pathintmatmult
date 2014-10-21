@@ -39,4 +39,4 @@ def plot2d(data: '[[X]]', x_range, y_range, out_path, *, x_label=None, y_label=N
 	if colorbar:
 		fig.colorbar(img, drawedges=False)
 
-	fig.savefig(out_path, bbox_inches='tight')
+	fig.savefig(out_path, bbox_inches='tight', transparent=True)
