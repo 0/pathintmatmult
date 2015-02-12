@@ -19,7 +19,6 @@ from argparse import ArgumentParser
 
 from pathintmatmult import PIGSMM
 from pathintmatmult.constants import HBAR, KB, ME
-from pathintmatmult.plotting import plot2d
 from pathintmatmult.potentials import harmonic_potential
 
 
@@ -63,6 +62,8 @@ print('E_mixed = {} K'.format(estimated_total_energy))
 
 # Output plot.
 if density_out:
+	from pathintmatmult.plotting import plot2d
+
 	xy_range = (-grid_range, grid_range)
 
 	plot2d(ho_pigs.density, xy_range, xy_range, density_out, x_label=r'$q_j / \mathrm{nm}$', y_label=r'$q_i / \mathrm{nm}$')
