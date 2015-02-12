@@ -33,6 +33,7 @@ p_config.add_argument('--grid-len', metavar='L', type=int, required=True, help='
 p_config.add_argument('--beta', metavar='B', type=float, required=True, help='propagation length (1/K)')
 p_config.add_argument('--num-links', metavar='P', type=int, required=True, help='number of links')
 
+p.add_argument('--wf-out', metavar='FILE', help='path to output wavefunction values')
 p.add_argument('--density-out', metavar='FILE', help='path to output density plot')
 
 args = p.parse_args()
@@ -44,6 +45,7 @@ grid_len = args.grid_len # 1
 beta = args.beta / KB # mol/kJ
 num_links = args.num_links # 1
 
+wf_out = args.wf_out
 density_out = args.density_out
 
 
@@ -59,6 +61,12 @@ print('V = {} K'.format(estimated_potential_energy))
 print('E_virial = {} K'.format(2 * estimated_potential_energy))
 print('E_mixed = {} K'.format(estimated_total_energy))
 
+
+# Output wavefunction.
+if wf_out:
+	import numpy as N
+
+	N.savetxt(wf_out, N.dstack((ho_pigs.grid, ho_pigs.ground_wf))[0])
 
 # Output plot.
 if density_out:
