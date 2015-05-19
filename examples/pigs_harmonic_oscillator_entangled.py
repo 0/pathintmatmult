@@ -27,26 +27,27 @@ p_config.add_argument('--num-links', metavar='P', type=int, required=True, help=
 
 args = p.parse_args()
 
-mass = args.mass * ME # g/mol
-omega_0 = args.omega_0 * KB / HBAR # 1/ps
-omega_int = args.omega_int * KB / HBAR # 1/ps
-grid_range = args.grid_range # nm
-grid_len = args.grid_len # 1
-beta = args.beta / KB # mol/kJ
-num_links = args.num_links # 1
+mass = args.mass * ME  # g/mol
+omega_0 = args.omega_0 * KB / HBAR  # 1/ps
+omega_int = args.omega_int * KB / HBAR  # 1/ps
+grid_range = args.grid_range  # nm
+grid_len = args.grid_len  # 1
+beta = args.beta / KB  # mol/kJ
+num_links = args.num_links  # 1
 
 
 # Calculate values.
 pot_0 = harmonic_potential(m=mass, w=omega_0)
 pot_int = harmonic_potential(m=mass, w=omega_int)
 
+
 def total_potential(qs):
-	return pot_0(qs[...,0]) + pot_0(qs[...,1]) + pot_int(qs[...,1] - qs[...,0])
+    return pot_0(qs[..., 0]) + pot_0(qs[..., 1]) + pot_int(qs[..., 1] - qs[..., 0])
 
 ho_pigs = PIGSMM2(mass, grid_range, grid_len, beta, num_links, total_potential)
 
-estimated_potential_energy = ho_pigs.expectation_value(total_potential) / KB # K
-estimated_total_energy = ho_pigs.energy_mixed / KB # K
+estimated_potential_energy = ho_pigs.expectation_value(total_potential) / KB  # K
+estimated_total_energy = ho_pigs.energy_mixed / KB  # K
 estimated_trace = ho_pigs.trace_renyi2
 
 print('V = {} K'.format(estimated_potential_energy))

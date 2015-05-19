@@ -38,12 +38,12 @@ p.add_argument('--density-out', metavar='FILE', help='path to output density plo
 
 args = p.parse_args()
 
-mass = args.mass * ME # g/mol
-omega = args.omega * KB / HBAR # 1/ps
-grid_range = args.grid_range # nm
-grid_len = args.grid_len # 1
-beta = args.beta / KB # mol/kJ
-num_links = args.num_links # 1
+mass = args.mass * ME  # g/mol
+omega = args.omega * KB / HBAR  # 1/ps
+grid_range = args.grid_range  # nm
+grid_len = args.grid_len  # 1
+beta = args.beta / KB  # mol/kJ
+num_links = args.num_links  # 1
 
 wf_out = args.wf_out
 density_out = args.density_out
@@ -53,8 +53,8 @@ density_out = args.density_out
 harmonic = harmonic_potential(m=mass, w=omega)
 ho_pigs = PIGSMM(mass, grid_range, grid_len, beta, num_links, harmonic)
 
-estimated_potential_energy = ho_pigs.expectation_value(harmonic) / KB # K
-estimated_total_energy = ho_pigs.energy_mixed / KB # K
+estimated_potential_energy = ho_pigs.expectation_value(harmonic) / KB  # K
+estimated_total_energy = ho_pigs.energy_mixed / KB  # K
 
 print('V = {} K'.format(estimated_potential_energy))
 # According to the virial theorem, <K> = <V> for a harmonic oscillator.
@@ -64,14 +64,14 @@ print('E_mixed = {} K'.format(estimated_total_energy))
 
 # Output wavefunction.
 if wf_out:
-	import numpy as N
+    import numpy as N
 
-	N.savetxt(wf_out, N.dstack((ho_pigs.grid, ho_pigs.ground_wf))[0])
+    N.savetxt(wf_out, N.dstack((ho_pigs.grid, ho_pigs.ground_wf))[0])
 
 # Output plot.
 if density_out:
-	from pathintmatmult.plotting import plot2d
+    from pathintmatmult.plotting import plot2d
 
-	xy_range = (-grid_range, grid_range)
+    xy_range = (-grid_range, grid_range)
 
-	plot2d(ho_pigs.density, xy_range, xy_range, density_out, x_label=r'$q_j / \mathrm{nm}$', y_label=r'$q_i / \mathrm{nm}$')
+    plot2d(ho_pigs.density, xy_range, xy_range, density_out, x_label=r'$q_j / \mathrm{nm}$', y_label=r'$q_i / \mathrm{nm}$')
