@@ -2,7 +2,7 @@
 Numerical matrix multiplication for path integrals.
 """
 
-import numpy as N
+import numpy as np
 
 from .constants import HBAR
 from .tools import cached
@@ -96,7 +96,7 @@ class PIGSMM:
         Vector of the positions corresponding to the grid points.
         """
 
-        return N.linspace(-self.grid_range, self.grid_range, self.grid_len)
+        return np.linspace(-self.grid_range, self.grid_range, self.grid_len)
 
     @property
     @cached
@@ -134,7 +134,7 @@ class PIGSMM:
         Currently only has support for a uniform trial function.
         """
 
-        return N.ones(self.grid_len) / N.sqrt(self.grid_len)
+        return np.ones(self.grid_len) / np.sqrt(self.grid_len)
 
     @property
     @cached
@@ -145,12 +145,12 @@ class PIGSMM:
 
         prefactor_K = self.mass / (2 * HBAR * HBAR * self.tau)  # 1/nm^2
         prefactor_V = self.tau / 2  # mol/kJ
-        prefactor_front = N.sqrt(prefactor_K / N.pi)  # 1/nm
+        prefactor_front = np.sqrt(prefactor_K / np.pi)  # 1/nm
 
-        K = N.tile(self.grid, (self.grid_len, 1))  # [[nm]]
-        V = N.tile(self.pot_f_grid, (self.grid_len, 1))  # [[kJ/mol]]
+        K = np.tile(self.grid, (self.grid_len, 1))  # [[nm]]
+        V = np.tile(self.pot_f_grid, (self.grid_len, 1))  # [[kJ/mol]]
 
-        return prefactor_front * N.exp(-prefactor_K * (K - K.T) ** 2 - prefactor_V * (V + V.T))
+        return prefactor_front * np.exp(-prefactor_K * (K - K.T) ** 2 - prefactor_V * (V + V.T))
 
     @property
     @cached
@@ -161,8 +161,8 @@ class PIGSMM:
 
         power = self.num_links // 2
 
-        eigvals, eigvecs = N.linalg.eigh(self.volume_element * self.rho_tau)
-        result = N.dot(N.dot(eigvecs, N.diag(eigvals ** power)), eigvecs.T)
+        eigvals, eigvecs = np.linalg.eigh(self.volume_element * self.rho_tau)
+        result = np.dot(np.dot(eigvecs, np.diag(eigvals ** power)), eigvecs.T)
 
         return result / self.volume_element
 
@@ -173,7 +173,7 @@ class PIGSMM:
         Matrix for the full path propagator.
         """
 
-        return self.volume_element * N.dot(self.rho_beta_half, self.rho_beta_half)
+        return self.volume_element * np.dot(self.rho_beta_half, self.rho_beta_half)
 
     @property
     @cached
@@ -182,9 +182,9 @@ class PIGSMM:
         Normalized ground state wavefunction.
         """
 
-        ground_wf = N.dot(self.rho_beta_half, self.trial_f_grid)
+        ground_wf = np.dot(self.rho_beta_half, self.trial_f_grid)
         # Explicitly normalize.
-        ground_wf /= N.sqrt(N.sum(ground_wf ** 2))
+        ground_wf /= np.sqrt(np.sum(ground_wf ** 2))
 
         return ground_wf
 
@@ -195,7 +195,7 @@ class PIGSMM:
         Normalized ground state density matrix.
         """
 
-        return N.outer(self.ground_wf, self.ground_wf)
+        return np.outer(self.ground_wf, self.ground_wf)
 
     @property
     @cached
@@ -215,10 +215,10 @@ class PIGSMM:
         Currently only has support for a uniform trial function.
         """
 
-        ground_wf_full = N.dot(self.rho_beta, self.trial_f_grid)
+        ground_wf_full = np.dot(self.rho_beta, self.trial_f_grid)
 
-        energy = N.sum(ground_wf_full * self.pot_f_grid * self.trial_f_grid)
-        normalization = N.dot(ground_wf_full, self.trial_f_grid)
+        energy = np.sum(ground_wf_full * self.pot_f_grid * self.trial_f_grid)
+        normalization = np.dot(ground_wf_full, self.trial_f_grid)
 
         return energy / normalization
 
@@ -227,7 +227,7 @@ class PIGSMM:
         Ground state expectation value of property_f.
         """
 
-        return N.dot(self.density_diagonal, property_f(self.grid))
+        return np.dot(self.density_diagonal, property_f(self.grid))
 
 
 class PIGSMM2(PIGSMM):
@@ -247,8 +247,8 @@ class PIGSMM2(PIGSMM):
         particles.
         """
 
-        single = N.linspace(-self.grid_range, self.grid_range, self.grid_len)  # [nm]
-        double = N.array([[a, b] for a in single for b in single])  # [[nm]]
+        single = np.linspace(-self.grid_range, self.grid_range, self.grid_len)  # [nm]
+        double = np.array([[a, b] for a in single for b in single])  # [[nm]]
 
         return double
 
@@ -272,7 +272,7 @@ class PIGSMM2(PIGSMM):
 
         num_points = self.grid_len ** 2
 
-        return N.ones(num_points) / N.sqrt(num_points)
+        return np.ones(num_points) / np.sqrt(num_points)
 
     @property
     @cached
@@ -283,17 +283,17 @@ class PIGSMM2(PIGSMM):
 
         prefactor_K = self.mass / (2 * HBAR * HBAR * self.tau)  # 1/nm^2
         prefactor_V = self.tau / 2  # mol/kJ
-        prefactor_front = prefactor_K / N.pi  # 1/nm^2
+        prefactor_front = prefactor_K / np.pi  # 1/nm^2
 
-        K = N.empty((self.grid_len ** 2, self.grid_len ** 2))  # nm^2
-        V = N.empty_like(K)  # kJ/mol
+        K = np.empty((self.grid_len ** 2, self.grid_len ** 2))  # nm^2
+        V = np.empty_like(K)  # kJ/mol
 
         for i, q_i in enumerate(self.grid):
             for j, q_j in enumerate(self.grid):
-                K[i, j] = N.sum((q_i - q_j) ** 2)
+                K[i, j] = np.sum((q_i - q_j) ** 2)
                 V[i, j] = self.pot_f(q_i) + self.pot_f(q_j)
 
-        return prefactor_front * N.exp(-prefactor_K * K - prefactor_V * V)
+        return prefactor_front * np.exp(-prefactor_K * K - prefactor_V * V)
 
     # rho_beta_half(self) -> '[[1/nm^2]]'
 
@@ -314,7 +314,7 @@ class PIGSMM2(PIGSMM):
         Density matrix for one particle, with the other traced out.
         """
 
-        density_new = N.zeros((self.grid_len, self.grid_len))
+        density_new = np.zeros((self.grid_len, self.grid_len))
 
         for i in range(self.grid_len):
             for j in range(self.grid_len):
@@ -332,4 +332,4 @@ class PIGSMM2(PIGSMM):
         The 2nd Rényi entropy is the negative logarithm of this quantity.
         """
 
-        return N.linalg.matrix_power(self.density_reduced, 2).trace()
+        return np.linalg.matrix_power(self.density_reduced, 2).trace()

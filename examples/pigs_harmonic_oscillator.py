@@ -64,9 +64,9 @@ print('E_mixed = {} K'.format(estimated_total_energy))
 
 # Output wavefunction.
 if wf_out:
-    import numpy as N
+    import numpy as np
 
-    N.savetxt(wf_out, N.dstack((ho_pigs.grid, ho_pigs.ground_wf))[0])
+    np.savetxt(wf_out, np.dstack((ho_pigs.grid, ho_pigs.ground_wf))[0])
 
 # Output plot.
 if density_out:
