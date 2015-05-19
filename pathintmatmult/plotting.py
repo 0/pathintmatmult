@@ -2,8 +2,6 @@
 Convenience functions for plotting the generated data.
 """
 
-from matplotlib import cm
-
 import matplotlib.pyplot as plt
 
 
