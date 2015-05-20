@@ -127,7 +127,7 @@ class PIGSMM:
 
     @property
     @cached
-    def trial_f_grid(self) -> '[1/nm^1/2]':
+    def trial_f_grid(self) -> '[1]':
         """
         Normalized trial function evaluated on the grid.
 
@@ -177,7 +177,7 @@ class PIGSMM:
 
     @property
     @cached
-    def ground_wf(self) -> '[1/nm^1/2]':
+    def ground_wf(self) -> '[1]':
         """
         Normalized ground state wavefunction.
         """
@@ -190,7 +190,7 @@ class PIGSMM:
 
     @property
     @cached
-    def density(self) -> '[[1/nm]]':
+    def density(self) -> '[[1]]':
         """
         Normalized ground state density matrix.
         """
@@ -199,7 +199,7 @@ class PIGSMM:
 
     @property
     @cached
-    def density_diagonal(self) -> '[1/nm]':
+    def density_diagonal(self) -> '[1]':
         """
         Normalized ground state diagonal density.
         """
@@ -263,7 +263,7 @@ class PIGSMM2(PIGSMM):
 
     @property
     @cached
-    def trial_f_grid(self) -> '[1/nm]':
+    def trial_f_grid(self) -> '[1]':
         """
         Normalized trial function evaluated on the grid.
 
@@ -299,17 +299,11 @@ class PIGSMM2(PIGSMM):
 
     # rho_beta(self) -> '[[1/nm^2]]'
 
-    # ground_wf(self) -> '[1/nm]'
-
-    # density(self) -> '[[1/nm^2]]'
-
-    # density_diagonal(self) -> '[1/nm^2]'
-
     # expectation_value(self, property_f: '[[nm]] -> [X]') -> 'X'
 
     @property
     @cached
-    def density_reduced(self) -> '[[1/nm]]':
+    def density_reduced(self) -> '[[1]]':
         """
         Density matrix for one particle, with the other traced out.
         """
