@@ -18,7 +18,8 @@ class PIGSMM:
     trial function using numerical matrix multiplication.
     """
 
-    def __init__(self, mass: 'g/mol', grid_range: 'nm', grid_len: '1', beta: 'mol/kJ', num_links: '1', pot_f: 'nm -> kJ/mol'):
+    def __init__(self, mass: 'g/mol', grid_range: 'nm', grid_len: '1',
+                 beta: 'mol/kJ', num_links: '1', pot_f: 'nm -> kJ/mol'):
         """
         Note:
           The convention used is that beta represents the entire path, so the
@@ -91,6 +92,15 @@ class PIGSMM:
 
     @property
     @cached
+    def num_points(self) -> '1':
+        """
+        Number of points in the vector.
+        """
+
+        return self.grid_len
+
+    @property
+    @cached
     def grid(self) -> '[nm]':
         """
         Vector of the positions corresponding to the grid points.
@@ -127,14 +137,25 @@ class PIGSMM:
 
     @property
     @cached
+    def uniform_trial_f_grid(self) -> '[1]':
+        """
+        Unnormalized uniform trial function evaluated on the grid.
+        """
+
+        return np.ones(self.num_points)
+
+    @property
+    @cached
     def trial_f_grid(self) -> '[1]':
         """
-        Normalized trial function evaluated on the grid.
+        Unnormalized trial function evaluated on the grid.
 
         Currently only has support for a uniform trial function.
         """
 
-        return np.ones(self.grid_len) / np.sqrt(self.grid_len)
+        if True:
+            # Default to a uniform trial function.
+            return self.uniform_trial_f_grid
 
     @property
     @cached
@@ -147,8 +168,8 @@ class PIGSMM:
         prefactor_V = self.tau / 2  # mol/kJ
         prefactor_front = np.sqrt(prefactor_K / np.pi)  # 1/nm
 
-        K = np.tile(self.grid, (self.grid_len, 1))  # [[nm]]
-        V = np.tile(self.pot_f_grid, (self.grid_len, 1))  # [[kJ/mol]]
+        K = np.tile(self.grid, (self.num_points, 1))  # [[nm]]
+        V = np.tile(self.pot_f_grid, (self.num_points, 1))  # [[kJ/mol]]
 
         return prefactor_front * np.exp(-prefactor_K * (K - K.T) ** 2 - prefactor_V * (V + V.T))
 
@@ -239,6 +260,15 @@ class PIGSMM2(PIGSMM):
 
     @property
     @cached
+    def num_points(self) -> '1':
+        """
+        Number of points in the vector.
+        """
+
+        return self.grid_len ** 2
+
+    @property
+    @cached
     def grid(self) -> '[[nm]]':
         """
         Vector of the positions corresponding to the grid points.
@@ -263,19 +293,6 @@ class PIGSMM2(PIGSMM):
 
     @property
     @cached
-    def trial_f_grid(self) -> '[1]':
-        """
-        Normalized trial function evaluated on the grid.
-
-        Currently only has support for a uniform trial function.
-        """
-
-        num_points = self.grid_len ** 2
-
-        return np.ones(num_points) / np.sqrt(num_points)
-
-    @property
-    @cached
     def rho_tau(self) -> '[[1/nm^2]]':
         """
         Matrix for the high-temperature propagator.
@@ -285,7 +302,7 @@ class PIGSMM2(PIGSMM):
         prefactor_V = self.tau / 2  # mol/kJ
         prefactor_front = prefactor_K / np.pi  # 1/nm^2
 
-        K = np.empty((self.grid_len ** 2, self.grid_len ** 2))  # nm^2
+        K = np.empty((self.num_points, self.num_points))  # nm^2
         V = np.empty_like(K)  # kJ/mol
 
         for i, q_i in enumerate(self.grid):
