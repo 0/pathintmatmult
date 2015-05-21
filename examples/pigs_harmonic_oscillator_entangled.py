@@ -8,6 +8,8 @@ A pair of identical harmonic oscillators with a harmonic interaction potential.
 
 from argparse import ArgumentParser
 
+import numpy as np
+
 from pathintmatmult import PIGSMM2
 from pathintmatmult.constants import HBAR, KB, ME
 from pathintmatmult.potentials import harmonic_potential
@@ -24,6 +26,7 @@ p_config.add_argument('--grid-range', metavar='R', type=float, required=True, he
 p_config.add_argument('--grid-len', metavar='L', type=int, required=True, help='number of points on grid')
 p_config.add_argument('--beta', metavar='B', type=float, required=True, help='propagation length (1/K)')
 p_config.add_argument('--num-links', metavar='P', type=int, required=True, help='number of links')
+p_config.add_argument('--trial-deform', metavar='D', type=float, help='deformation factor for exact trial function')
 
 args = p.parse_args()
 
@@ -34,6 +37,7 @@ grid_range = args.grid_range  # nm
 grid_len = args.grid_len  # 1
 beta = args.beta / KB  # mol/kJ
 num_links = args.num_links  # 1
+trial_deform = args.trial_deform
 
 
 # Calculate values.
@@ -41,10 +45,31 @@ pot_0 = harmonic_potential(m=mass, w=omega_0)
 pot_int = harmonic_potential(m=mass, w=omega_int)
 
 
-def total_potential(qs):
+def total_potential(qs: '[nm]') -> 'kJ/mol':
     return pot_0(qs[..., 0]) + pot_0(qs[..., 1]) + pot_int(qs[..., 1] - qs[..., 0])
 
-ho_pigs = PIGSMM2(mass, grid_range, grid_len, beta, num_links, total_potential)
+kwargs = {}
+
+if trial_deform is not None:
+    alpha = trial_deform * mass / HBAR  # ps/nm^2
+    omega_R = omega_0  # 1/ps
+    omega_r = np.sqrt(omega_0 * omega_0 + 2 * omega_int * omega_int)  # 1/ps
+    omega_p = omega_R + omega_r  # 1/ps
+    omega_m = omega_R - omega_r  # 1/ps
+
+    def trial_f(qs: '[nm]') -> '1':
+        return np.exp(-0.25 * alpha * (omega_p * (qs[..., 0] ** 2 + qs[..., 1] ** 2) + 2 * omega_m * qs[..., 0] * qs[..., 1]))
+
+    def trial_f_diff_0(qs: '[nm]') -> '1/nm^2':
+        return 0.5 * alpha * (0.5 * alpha * (omega_p * qs[..., 0] + omega_m * qs[..., 1]) ** 2 - omega_p) * trial_f(qs)
+
+    def trial_f_diff_1(qs: '[nm]') -> '1/nm^2':
+        return 0.5 * alpha * (0.5 * alpha * (omega_m * qs[..., 0] + omega_p * qs[..., 1]) ** 2 - omega_p) * trial_f(qs)
+
+    kwargs['trial_f'] = trial_f
+    kwargs['trial_f_diffs'] = [trial_f_diff_0, trial_f_diff_1]
+
+ho_pigs = PIGSMM2(mass, grid_range, grid_len, beta, num_links, total_potential, **kwargs)
 
 estimated_potential_energy = ho_pigs.expectation_value(total_potential) / KB  # K
 estimated_total_energy = ho_pigs.energy_mixed / KB  # K

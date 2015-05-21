@@ -19,7 +19,9 @@ class PIGSMM:
     """
 
     def __init__(self, mass: 'g/mol', grid_range: 'nm', grid_len: '1',
-                 beta: 'mol/kJ', num_links: '1', pot_f: 'nm -> kJ/mol'):
+                 beta: 'mol/kJ', num_links: '1', pot_f: 'nm -> kJ/mol', *,
+                 trial_f: 'nm -> 1' = None,
+                 trial_f_diffs: '[nm -> 1/nm^2]' = None):
         """
         Note:
           The convention used is that beta represents the entire path, so the
@@ -27,7 +29,8 @@ class PIGSMM:
           is beta/2.
 
         Note:
-          If pot_f receives an array as input, it should map over it.
+          When pot_f and trial_f receive an array as input, they need to map
+          over it.
 
         Parameters:
           mass: Mass of the particle.
@@ -38,6 +41,9 @@ class PIGSMM:
           num_links: Number of links in the entire path.
           pot_f: Potential experienced by the particle at some position in
                  space.
+          trial_f: Approximation to the ground state wavefunction. If none is
+                   provided, a uniform trial function is used.
+          trial_f_diffs: Second derivatives of trial_f.
         """
 
         assert mass >= 0, 'Mass must not be negative.'
@@ -47,12 +53,17 @@ class PIGSMM:
         assert num_links > 0, 'Must have at least one link.'
         assert num_links % 2 == 0, 'Number of links must be even.'
 
+        if trial_f is not None:
+            assert trial_f_diffs is not None, 'Derivatives must be provided.'
+
         self._mass = mass
         self._grid_range = grid_range
         self._grid_len = grid_len
         self._beta = beta
         self._num_links = num_links
         self._pot_f = pot_f
+        self._trial_f = trial_f
+        self._trial_f_diffs = trial_f_diffs
 
         # For cached decorator.
         self._cached = {}
@@ -149,13 +160,40 @@ class PIGSMM:
     def trial_f_grid(self) -> '[1]':
         """
         Unnormalized trial function evaluated on the grid.
-
-        Currently only has support for a uniform trial function.
         """
 
-        if True:
+        if self._trial_f is None:
             # Default to a uniform trial function.
             return self.uniform_trial_f_grid
+
+        return self._trial_f(self.grid)
+
+    @property
+    @cached
+    def uniform_trial_f_diffs_grid(self) -> '[[1/nm^2]]':
+        """
+        Unnormalized uniform trial function derivatives evaluated on the grid.
+        """
+
+        return np.zeros((1, self.num_points))
+
+    @property
+    @cached
+    def trial_f_diffs_grid(self) -> '[[1/nm^2]]':
+        """
+        Unnormalized trial function derivatives evaluated on the grid.
+        """
+
+        if self._trial_f is None:
+            # Default to a uniform trial function.
+            return self.uniform_trial_f_diffs_grid
+
+        result = np.empty((len(self._trial_f_diffs), self.num_points))
+
+        for i, f in enumerate(self._trial_f_diffs):
+            result[i] = f(self.grid)
+
+        return result
 
     @property
     @cached
@@ -232,16 +270,16 @@ class PIGSMM:
     def energy_mixed(self) -> 'kJ/mol':
         """
         Ground state energy calculated using the mixed estimator.
-
-        Currently only has support for a uniform trial function.
         """
 
-        ground_wf_full = np.dot(self.rho_beta, self.trial_f_grid)
+        ground_wf_full = np.dot(self.rho_beta, self.trial_f_grid)  # [1/nm]
+        trial_f_diffs = np.sum(self.trial_f_diffs_grid / self.mass, axis=0)  # [mol/g nm^2]
 
-        energy = np.sum(ground_wf_full * self.pot_f_grid * self.trial_f_grid)
-        normalization = np.dot(ground_wf_full, self.trial_f_grid)
+        energy_V = np.sum(ground_wf_full * self.pot_f_grid * self.trial_f_grid)  # kJ/mol nm
+        energy_K = np.dot(ground_wf_full, trial_f_diffs)  # mol/g nm^3
+        normalization = np.dot(ground_wf_full, self.trial_f_grid)  # 1/nm
 
-        return energy / normalization
+        return (energy_V - 0.5 * HBAR * HBAR * energy_K) / normalization
 
     def expectation_value(self, property_f: '[nm] -> [X]') -> 'X':
         """
@@ -290,6 +328,15 @@ class PIGSMM2(PIGSMM):
         """
 
         return self.grid_spacing ** 2
+
+    @property
+    @cached
+    def uniform_trial_f_diffs_grid(self) -> '[1]':
+        """
+        Unnormalized uniform trial function derivatives evaluated on the grid.
+        """
+
+        return np.zeros((2, self.num_points))
 
     @property
     @cached

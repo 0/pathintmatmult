@@ -13,9 +13,15 @@ to try:
   --mass 1 --omega 1 --grid-range 120 --grid-len 100 --beta 12 --num-links 1200
 
   --mass 10 --omega 1 --grid-range 40 --grid-len 100 --beta 12 --num-links 1200
+
+If --trial-deform is not given, a uniform trial function is used. If it is
+given, the exact ground state is used as the trial fuction, but is deformed by
+the given factor (1 corresponds to no deformation).
 """
 
 from argparse import ArgumentParser
+
+import numpy as np
 
 from pathintmatmult import PIGSMM
 from pathintmatmult.constants import HBAR, KB, ME
@@ -32,6 +38,7 @@ p_config.add_argument('--grid-range', metavar='R', type=float, required=True, he
 p_config.add_argument('--grid-len', metavar='L', type=int, required=True, help='number of points on grid')
 p_config.add_argument('--beta', metavar='B', type=float, required=True, help='propagation length (1/K)')
 p_config.add_argument('--num-links', metavar='P', type=int, required=True, help='number of links')
+p_config.add_argument('--trial-deform', metavar='D', type=float, help='deformation factor for exact trial function')
 
 p.add_argument('--wf-out', metavar='FILE', help='path to output wavefunction values')
 p.add_argument('--density-out', metavar='FILE', help='path to output density plot')
@@ -44,6 +51,7 @@ grid_range = args.grid_range  # nm
 grid_len = args.grid_len  # 1
 beta = args.beta / KB  # mol/kJ
 num_links = args.num_links  # 1
+trial_deform = args.trial_deform
 
 wf_out = args.wf_out
 density_out = args.density_out
@@ -51,7 +59,21 @@ density_out = args.density_out
 
 # Calculate values.
 harmonic = harmonic_potential(m=mass, w=omega)
-ho_pigs = PIGSMM(mass, grid_range, grid_len, beta, num_links, harmonic)
+kwargs = {}
+
+if trial_deform is not None:
+    alpha = trial_deform * mass * omega / HBAR  # 1/nm^2
+
+    def trial_f(q: 'nm') -> '1':
+        return np.exp(-0.5 * alpha * q * q)
+
+    def trial_f_diff(q: 'nm') -> '1/nm^2':
+        return alpha * (alpha * q * q - 1) * trial_f(q)
+
+    kwargs['trial_f'] = trial_f
+    kwargs['trial_f_diffs'] = [trial_f_diff]
+
+ho_pigs = PIGSMM(mass, grid_range, grid_len, beta, num_links, harmonic, **kwargs)
 
 estimated_potential_energy = ho_pigs.expectation_value(harmonic) / KB  # K
 estimated_total_energy = ho_pigs.energy_mixed / KB  # K
@@ -64,8 +86,6 @@ print('E_mixed = {} K'.format(estimated_total_energy))
 
 # Output wavefunction.
 if wf_out:
-    import numpy as np
-
     np.savetxt(wf_out, np.dstack((ho_pigs.grid, ho_pigs.ground_wf))[0])
 
 # Output plot.
