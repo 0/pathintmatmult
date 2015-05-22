@@ -73,7 +73,7 @@ if trial_deform is not None:
     kwargs['trial_f'] = trial_f
     kwargs['trial_f_diffs'] = [trial_f_diff]
 
-ho_pigs = PIGSMM([mass], [grid_range], [grid_len], beta, num_links, harmonic, **kwargs)
+ho_pigs = PIGSMM([mass], [grid_range], [grid_len], harmonic, beta, num_links, **kwargs)
 
 estimated_potential_energy = ho_pigs.expectation_value(harmonic) / KB  # K
 estimated_total_energy = ho_pigs.energy_mixed / KB  # K

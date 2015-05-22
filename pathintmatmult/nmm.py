@@ -10,30 +10,20 @@ from .constants import HBAR
 from .tools import cached
 
 
-class PIGSMM:
+class PIMM:
     """
-    Path Integral Ground State via Matrix Multiplication
+    Path Integrals via Matrix Multiplication
 
-    Calculate the approximate ground state wavefunction of a system comprised
-    of one or more particles in an arbitrary potential on a discretized and
-    truncated grid. The wavefunction is determined via imaginary time
-    propagation from a trial function using numerical matrix multiplication.
+    Base class for various kinds of path integral implementations.
     """
 
     def __init__(self, masses: '[g/mol]', grid_ranges: '[nm]',
-                 grid_lens: '[1]', beta: 'mol/kJ', num_links: '1',
-                 pot_f: '[nm] -> kJ/mol', *,
-                 trial_f: '[nm] -> 1' = None,
-                 trial_f_diffs: '[[nm] -> 1/nm^2]' = None):
+                 grid_lens: '[1]', pot_f: '[nm] -> kJ/mol',
+                 beta: 'mol/kJ', num_links: '1'):
         """
         Note:
-          The convention used is that beta represents the entire path, so the
-          propagation length from the trial function to the middle of the path
-          is beta/2.
-
-        Note:
-          When pot_f and trial_f receive an N-dimensional array as input, they
-          need to map over it, returning an (N-1)-dimensional array.
+          When pot_f receives an N-dimensional array as input, it needs to map
+          over it, returning an (N-1)-dimensional array.
 
         Note:
           The "particles" are actually any Cartesian degrees of freedom. One
@@ -41,7 +31,7 @@ class PIGSMM:
           3-dimensional 1-particle system as for a 1-dimensional 3-particle
           system. Of course, the coordinate arrays must be interpreted
           appropriately in each case (whether by the potential function or by
-          the user of the output wavefunction).
+          the user of the output density).
 
         Parameters:
           masses: Masses of the particles.
@@ -52,10 +42,6 @@ class PIGSMM:
           num_links: Number of links in the entire path.
           pot_f: Potential experienced by the particles in some spatial
                  configuration.
-          trial_f: Approximation to the ground state wavefunction. If none is
-                   provided, a uniform trial function is used.
-          trial_f_diffs: Second derivatives of trial_f. One function must be
-                         specified for each particle.
         """
 
         assert len(masses) == len(grid_ranges) == len(grid_lens), \
@@ -64,21 +50,14 @@ class PIGSMM:
         assert all(gr > 0 for gr in grid_ranges), 'Grids must have positive lengths.'
         assert all(gl >= 2 for gl in grid_lens), 'Grids must have at least two points.'
         assert beta > 0, 'Beta must be positive.'
-        assert num_links > 0, 'Must have at least one link.'
-        assert num_links % 2 == 0, 'Number of links must be even.'
-
-        if trial_f is not None:
-            assert trial_f_diffs is not None, 'Derivatives must be provided.'
-            assert len(trial_f_diffs) == len(masses), 'Number of derivatives must match.'
+        assert num_links >= 2, 'Must have at least two links.'
 
         self._masses = np.array(masses)
         self._grid_ranges = np.array(grid_ranges)
         self._grid_lens = np.array(grid_lens)
+        self._pot_f = pot_f
         self._beta = beta
         self._num_links = num_links
-        self._pot_f = pot_f
-        self._trial_f = trial_f
-        self._trial_f_diffs = trial_f_diffs
 
         # For cached decorator.
         self._cached = {}
@@ -96,24 +75,16 @@ class PIGSMM:
         return self._grid_lens
 
     @property
+    def pot_f(self) -> '[nm] -> kJ/mol':
+        return self._pot_f
+
+    @property
     def beta(self) -> 'mol/kJ':
         return self._beta
 
     @property
     def num_links(self) -> '1':
         return self._num_links
-
-    @property
-    def pot_f(self) -> '[nm] -> kJ/mol':
-        return self._pot_f
-
-    @property
-    def trial_f(self) -> '[nm] -> 1':
-        return self._trial_f
-
-    @property
-    def trial_f_diffs(self) -> '[[nm] -> 1/nm^2]':
-        return self._trial_f_diffs
 
     @property
     @cached
@@ -172,6 +143,104 @@ class PIGSMM:
 
     @property
     @cached
+    def rho_tau(self) -> '[[1/nm^N]]':
+        """
+        Matrix for the high-temperature propagator.
+        """
+
+        prefactors_K = self.masses / (2 * HBAR * HBAR * self.tau)  # [1/nm^2]
+        prefactor_V = self.tau / 2  # mol/kJ
+        prefactor_front = np.sqrt(np.prod(prefactors_K) / np.pi)  # 1/nm^N
+
+        K = np.empty((self.num_points, self.num_points))  # [[nm^2]]
+        V = np.empty_like(K)  # [[kJ/mol]]
+
+        for i, q_i in enumerate(self.grid):
+            for j, q_j in enumerate(self.grid):
+                K[i, j] = np.sum(prefactors_K * (q_i - q_j) ** 2)
+                V[i, j] = self.pot_f(q_i) + self.pot_f(q_j)
+
+        return prefactor_front * np.exp(-K - prefactor_V * V)
+
+    @property
+    def density_diagonal(self) -> '[1]':
+        """
+        Normalized diagonal density.
+        """
+
+        raise NotImplementedError()
+
+    def expectation_value(self, property_f: '[nm] -> X') -> 'X':
+        """
+        Expectation value of property_f.
+
+        Note:
+          This is only implemented for properties that are diagonal in the
+          position representation.
+
+        Note:
+          When property_f receives an N-dimensional array as input, it should
+          behave in the same manner as pot_f.
+        """
+
+        return np.dot(self.density_diagonal, property_f(self.grid))
+
+
+class PIGSMM(PIMM):
+    """
+    Path Integral Ground State via Matrix Multiplication
+
+    Calculate the approximate ground state wavefunction of a system comprised
+    of one or more particles in an arbitrary potential on a discretized and
+    truncated grid. The wavefunction is determined via imaginary time
+    propagation from a trial function using numerical matrix multiplication.
+    """
+
+    def __init__(self, masses: '[g/mol]', grid_ranges: '[nm]',
+                 grid_lens: '[1]', pot_f: '[nm] -> kJ/mol',
+                 beta: 'mol/kJ', num_links: '1', *,
+                 trial_f: '[nm] -> 1' = None,
+                 trial_f_diffs: '[[nm] -> 1/nm^2]' = None):
+        """
+        See PIMM.__init__ for more details.
+
+        Note:
+          The convention used is that beta represents the entire path, so the
+          propagation length from the trial function to the middle of the path
+          is beta/2.
+
+        Note:
+          When trial_f receives an N-dimensional array as input, it should
+          behave in the same manner as pot_f.
+
+        Parameters:
+          trial_f: Approximation to the ground state wavefunction. If none is
+                   provided, a uniform trial function is used.
+          trial_f_diffs: Second derivatives of trial_f. One function must be
+                         specified for each particle.
+        """
+
+        super().__init__(masses, grid_ranges, grid_lens, pot_f, beta, num_links)
+
+        assert num_links % 2 == 0, 'Number of links must be even.'
+
+        if trial_f is not None:
+            assert trial_f_diffs is not None, 'Derivatives must be provided.'
+            assert len(trial_f_diffs) == len(masses), 'Number of derivatives must match.'
+
+        self._trial_f = trial_f
+        self._trial_f_diffs = trial_f_diffs
+
+    @property
+    def trial_f(self) -> '[nm] -> 1':
+        return self._trial_f
+
+    @property
+    def trial_f_diffs(self) -> '[[nm] -> 1/nm^2]':
+        return self._trial_f_diffs
+
+    @property
+    @cached
     def uniform_trial_f_grid(self) -> '[1]':
         """
         Unnormalized uniform trial function evaluated on the grid.
@@ -218,27 +287,6 @@ class PIGSMM:
             result[i] = f(self.grid)
 
         return result
-
-    @property
-    @cached
-    def rho_tau(self) -> '[[1/nm^N]]':
-        """
-        Matrix for the high-temperature propagator.
-        """
-
-        prefactors_K = self.masses / (2 * HBAR * HBAR * self.tau)  # [1/nm^2]
-        prefactor_V = self.tau / 2  # mol/kJ
-        prefactor_front = np.sqrt(np.prod(prefactors_K) / np.pi)  # 1/nm^N
-
-        K = np.empty((self.num_points, self.num_points))  # [[nm^2]]
-        V = np.empty_like(K)  # [[kJ/mol]]
-
-        for i, q_i in enumerate(self.grid):
-            for j, q_j in enumerate(self.grid):
-                K[i, j] = np.sum(prefactors_K * (q_i - q_j) ** 2)
-                V[i, j] = self.pot_f(q_i) + self.pot_f(q_j)
-
-        return prefactor_front * np.exp(-K - prefactor_V * V)
 
     @property
     @cached
@@ -309,16 +357,6 @@ class PIGSMM:
         normalization = np.dot(ground_wf_full, self.trial_f_grid)  # 1/nm^N
 
         return (energy_V - 0.5 * HBAR * HBAR * energy_K) / normalization
-
-    def expectation_value(self, property_f: '[nm] -> X') -> 'X':
-        """
-        Ground state expectation value of property_f.
-
-        When property_f receives an N-dimensional array as input, it should
-        behave in the same manner as pot_f.
-        """
-
-        return np.dot(self.density_diagonal, property_f(self.grid))
 
     @property
     @cached
