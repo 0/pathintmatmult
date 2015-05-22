@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 
 import numpy as np
 
-from pathintmatmult import PIGSMM2
+from pathintmatmult import PIGSMM
 from pathintmatmult.constants import HBAR, KB, ME
 from pathintmatmult.potentials import harmonic_potential
 
@@ -46,7 +46,7 @@ pot_int = harmonic_potential(m=mass, w=omega_int)
 
 
 def total_potential(qs: '[nm]') -> 'kJ/mol':
-    return pot_0(qs[..., 0]) + pot_0(qs[..., 1]) + pot_int(qs[..., 1] - qs[..., 0])
+    return pot_0(qs[..., [0]]) + pot_0(qs[..., [1]]) + pot_int(qs[..., [0]] - qs[..., [1]])
 
 kwargs = {}
 
@@ -69,7 +69,7 @@ if trial_deform is not None:
     kwargs['trial_f'] = trial_f
     kwargs['trial_f_diffs'] = [trial_f_diff_0, trial_f_diff_1]
 
-ho_pigs = PIGSMM2(mass, grid_range, grid_len, beta, num_links, total_potential, **kwargs)
+ho_pigs = PIGSMM([mass, mass], [grid_range, grid_range], [grid_len, grid_len], beta, num_links, total_potential, **kwargs)
 
 estimated_potential_energy = ho_pigs.expectation_value(total_potential) / KB  # K
 estimated_total_energy = ho_pigs.energy_mixed / KB  # K

@@ -65,15 +65,15 @@ if trial_deform is not None:
     alpha = trial_deform * mass * omega / HBAR  # 1/nm^2
 
     def trial_f(q: 'nm') -> '1':
-        return np.exp(-0.5 * alpha * q * q)
+        return np.exp(-0.5 * alpha * q[..., 0] ** 2)
 
     def trial_f_diff(q: 'nm') -> '1/nm^2':
-        return alpha * (alpha * q * q - 1) * trial_f(q)
+        return alpha * (alpha * q[..., 0] ** 2 - 1) * trial_f(q)
 
     kwargs['trial_f'] = trial_f
     kwargs['trial_f_diffs'] = [trial_f_diff]
 
-ho_pigs = PIGSMM(mass, grid_range, grid_len, beta, num_links, harmonic, **kwargs)
+ho_pigs = PIGSMM([mass], [grid_range], [grid_len], beta, num_links, harmonic, **kwargs)
 
 estimated_potential_energy = ho_pigs.expectation_value(harmonic) / KB  # K
 estimated_total_energy = ho_pigs.energy_mixed / KB  # K
