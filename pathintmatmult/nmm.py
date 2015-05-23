@@ -186,6 +186,53 @@ class PIMM:
         return np.dot(self.density_diagonal, property_f(self.grid))
 
 
+class PIFTMM(PIMM):
+    """
+    Path Integral at Finite Temperature via Matrix Multiplication
+
+    Calculate the approximate thermal density matrix of a system comprised of
+    one or more particles in an arbitrary potential on a discretized and
+    truncated grid. The density matrix is determined via numerical matrix
+    multiplication of high-temperature matrices.
+    """
+
+    @property
+    @cached
+    def rho_beta(self) -> '[[1/nm^N]]':
+        """
+        Matrix for the full path propagator.
+        """
+
+        power = self.num_links - 1
+
+        eigvals, eigvecs = np.linalg.eigh(self.volume_element * self.rho_tau)
+        result = np.dot(np.dot(eigvecs, np.diag(eigvals ** power)), eigvecs.T)
+
+        return result / self.volume_element
+
+    @property
+    @cached
+    def density(self) -> '[[1]]':
+        """
+        Normalized thermal density matrix.
+        """
+
+        density = self.rho_beta
+        # Explicitly normalize.
+        density /= density.diagonal().sum()
+
+        return density
+
+    @property
+    @cached
+    def density_diagonal(self) -> '[1]':
+        """
+        Normalized thermal diagonal density.
+        """
+
+        return self.density.diagonal()
+
+
 class PIGSMM(PIMM):
     """
     Path Integral Ground State via Matrix Multiplication

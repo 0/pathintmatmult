@@ -1,1 +1,1 @@
-from .nmm import PIGSMM
+from .nmm import PIFTMM, PIGSMM

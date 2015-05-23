@@ -9,13 +9,24 @@ All the output densities (and wavefunctions) are normalized by including the vol
 This makes the values dimensionless and with the property that the sums of their diagonal elements (or of the squares of their elements) sum to unity.
 
 
-## Example
+## Examples
 
-An example density matrix for a single particle in a harmonic oscillator ground state:
-![harmonic oscillator density](https://0.github.io/pathintmatmult/examples/density.png)
+### `PIFTMM`
+
+Density matrix for a single particle in a harmonic oscillator at 1 K:
+![harmonic oscillator density](https://0.github.io/pathintmatmult/examples/pift_ho_density.png)
 Generated using:
 ```
-python examples/pigs_harmonic_oscillator.py --mass 1 --omega 1 --grid-range 120 --grid-len 500 --beta 16 --num-links 1024 --density-out density.png
+python examples/pift_harmonic_oscillator.py --mass 1 --omega 1 --grid-range 180 --grid-len 500 --beta 1 --num-links 1024 --density-out pift_ho_density.png
+```
+
+### `PIGSMM`
+
+Density matrix for a single particle in a harmonic oscillator ground state:
+![harmonic oscillator density](https://0.github.io/pathintmatmult/examples/pigs_ho_density.png)
+Generated using:
+```
+python examples/pigs_harmonic_oscillator.py --mass 1 --omega 1 --grid-range 120 --grid-len 500 --beta 16 --num-links 1024 --density-out pigs_ho_density.png
 ```
 
 
