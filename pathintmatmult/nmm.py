@@ -158,16 +158,12 @@ class PIMM:
         for i, q_i in enumerate(self.grid):
             for j, q_j in enumerate(self.grid):
                 K[i, j] = np.sum(prefactors_K * (q_i - q_j) ** 2)
-                V[i, j] = self.pot_f(q_i) + self.pot_f(q_j)
+                V[i, j] = self.pot_f_grid[i] + self.pot_f_grid[j]
 
         return prefactor_front * np.exp(-K - prefactor_V * V)
 
     @property
-    def density_diagonal(self) -> '[1]':
-        """
-        Normalized diagonal density.
-        """
-
+    def density_diagonal(self):
         raise NotImplementedError()
 
     def expectation_value(self, property_f: '[nm] -> X') -> 'X':
