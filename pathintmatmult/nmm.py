@@ -460,7 +460,7 @@ class PIGSIMM(PIGSMM):
     def rho_beta(self):
         raise NotImplementedError()
 
-    def _propagate_trial(self, start_grid, power):
+    def _propagate_trial(self, start_grid: '[1]', power: '1') -> '[1]':
         """
         Multiply start_grid by (rho_tau ** power).
         """
