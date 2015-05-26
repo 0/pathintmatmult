@@ -419,7 +419,8 @@ class PIGSMM(PIMM):
         for i in range(new_len):
             for j in range(new_len):
                 for t in range(other_len):
-                    density_new[i, j] += self.density[other_len * i + t, other_len * j + t]
+                    # Avoid computing self.density here.
+                    density_new[i, j] += self.ground_wf[other_len * i + t] * self.ground_wf[other_len * j + t]
 
         return density_new
 
@@ -433,3 +434,83 @@ class PIGSMM(PIMM):
         """
 
         return np.linalg.matrix_power(self.density_reduced, 2).trace()
+
+
+class PIGSIMM(PIGSMM):
+    """
+    Path Integral Ground State via Implicit Matrix Multiplication
+
+    Calculate the approximate ground state wavefunction of a system comprised
+    of one or more particles in an arbitrary potential on a discretized and
+    truncated grid. The wavefunction is determined via imaginary time
+    propagation from a trial function using implicit numerical matrix-vector
+    multiplication, where the full density matrix is never constructed.
+    """
+
+    @property
+    def rho_tau(self):
+        # We don't build any (full) matrices!
+        raise NotImplementedError()
+
+    @property
+    def rho_beta_half(self):
+        raise NotImplementedError()
+
+    @property
+    def rho_beta(self):
+        raise NotImplementedError()
+
+    def _propagate_trial(self, start_grid, power):
+        """
+        Multiply start_grid by (rho_tau ** power).
+        """
+
+        prefactors_K = self.masses / (2 * HBAR * HBAR * self.tau)  # [1/nm^2]
+        pot_exp = np.exp(-0.5 * self.tau * self.pot_f_grid)  # [1]
+
+        temp_wf1 = start_grid.copy()  # [1]
+        temp_wf2 = np.zeros_like(temp_wf1)  # [1]
+
+        for _ in range(power):
+            temp_wf1 *= pot_exp
+
+            for q, wf in zip(self.grid, temp_wf1):
+                # The temporary array here is the same shape as self.grid.
+                temp_wf2 += np.exp(-np.sum(prefactors_K * (self.grid - q) ** 2, axis=1)) * wf
+
+            temp_wf2 *= pot_exp
+
+            # Explicitly normalize at each step for stability.
+            temp_wf1 = temp_wf2 / np.sqrt(np.sum(temp_wf2 ** 2))
+            temp_wf2 = np.zeros_like(temp_wf1)
+
+        return temp_wf1
+
+    @property
+    @cached
+    def ground_wf(self) -> '[1]':
+        """
+        Normalized ground state wavefunction.
+        """
+
+        return self._propagate_trial(self.trial_f_grid, self.num_links // 2)
+
+    @property
+    def density(self):
+        raise NotImplementedError()
+
+    @property
+    @cached
+    def energy_mixed(self) -> 'kJ/mol':
+        """
+        Ground state energy calculated using the mixed estimator.
+        """
+
+        ground_wf_full = self._propagate_trial(self.ground_wf, self.num_links // 2)  # [1]
+        trial_f_diffs = np.sum(self.trial_f_diffs_grid / self.masses[:, np.newaxis], axis=0)  # [mol/g nm^2]
+
+        energy_V = np.sum(ground_wf_full * self.pot_f_grid * self.trial_f_grid)  # kJ/mol
+        energy_K = np.dot(ground_wf_full, trial_f_diffs)  # mol/g nm^2
+        normalization = np.dot(ground_wf_full, self.trial_f_grid)  # 1
+
+        return (energy_V - 0.5 * HBAR * HBAR * energy_K) / normalization

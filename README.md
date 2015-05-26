@@ -20,6 +20,15 @@ Generated using:
 python examples/pift_harmonic_oscillator.py --mass 1 --omega 1 --grid-range 180 --grid-len 500 --beta 1 --num-links 1024 --density-out pift_ho_density.png
 ```
 
+### `PIGSIMM`
+
+Square of wavefunction (diagonal density) for the ground state of two harmonically-interacting particles in a harmonic trap:
+![harmonic oscillator density](https://0.github.io/pathintmatmult/examples/pigs_ho_ent_density_diagonal.png)
+Generated using:
+```
+python examples/pigs_harmonic_oscillator_entangled.py --mass 1 --omega-0 1 --omega-int 1 --grid-range 100 --grid-len 100 --beta 6 --num-links 192 --density-diagonal-out pigs_ho_ent_density_diagonal.png
+```
+
 ### `PIGSMM`
 
 Density matrix for a single particle in a harmonic oscillator ground state:

@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 
 import numpy as np
 
-from pathintmatmult import PIGSMM
+from pathintmatmult import PIGSIMM
 from pathintmatmult.constants import HBAR, KB, ME
 from pathintmatmult.potentials import harmonic_potential
 
@@ -28,6 +28,9 @@ p_config.add_argument('--beta', metavar='B', type=float, required=True, help='pr
 p_config.add_argument('--num-links', metavar='P', type=int, required=True, help='number of links')
 p_config.add_argument('--trial-deform', metavar='D', type=float, help='deformation factor for exact trial function')
 
+p.add_argument('--wf-out', metavar='FILE', help='path to output wavefunction values')
+p.add_argument('--density-diagonal-out', metavar='FILE', help='path to output diagonal density plot')
+
 args = p.parse_args()
 
 mass = args.mass * ME  # g/mol
@@ -38,6 +41,9 @@ grid_len = args.grid_len  # 1
 beta = args.beta / KB  # mol/kJ
 num_links = args.num_links  # 1
 trial_deform = args.trial_deform
+
+wf_out = args.wf_out
+density_diagonal_out = args.density_diagonal_out
 
 
 # Calculate values.
@@ -69,7 +75,7 @@ if trial_deform is not None:
     kwargs['trial_f'] = trial_f
     kwargs['trial_f_diffs'] = [trial_f_diff_0, trial_f_diff_1]
 
-ho_pigs = PIGSMM([mass, mass], [grid_range, grid_range], [grid_len, grid_len], total_potential, beta, num_links, **kwargs)
+ho_pigs = PIGSIMM([mass, mass], [grid_range, grid_range], [grid_len, grid_len], total_potential, beta, num_links, **kwargs)
 
 estimated_potential_energy = ho_pigs.expectation_value(total_potential) / KB  # K
 estimated_total_energy = ho_pigs.energy_mixed / KB  # K
@@ -78,3 +84,17 @@ estimated_trace = ho_pigs.trace_renyi2
 print('V = {} K'.format(estimated_potential_energy))
 print('E_mixed = {} K'.format(estimated_total_energy))
 print('trace = {}'.format(estimated_trace))
+
+
+# Output wavefunction.
+if wf_out:
+    np.savetxt(wf_out, np.hstack((ho_pigs.grid, ho_pigs.ground_wf[:, np.newaxis])))
+
+# Output plot.
+if density_diagonal_out:
+    from pathintmatmult.plotting import plot2d
+
+    xy_range = (-grid_range, grid_range)
+    density = ho_pigs.density_diagonal.reshape(grid_len, grid_len)
+
+    plot2d(density, xy_range, xy_range, density_diagonal_out, x_label=r'$q_2 / \mathrm{nm}$', y_label=r'$q_1 / \mathrm{nm}$')
