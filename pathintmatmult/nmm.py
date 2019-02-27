@@ -130,7 +130,7 @@ class PIMM:
         Effective volume taken up by each grid point.
         """
 
-        return np.prod(self.grid_ranges / (self.grid_lens - 1))
+        return np.prod(2 * self.grid_ranges / (self.grid_lens - 1))
 
     @property
     @cached
